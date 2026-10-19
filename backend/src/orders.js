@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-export const ORDER_STATUSES = ['PENDING', 'IN_PREPARATION', 'READY', 'DELIVERED'];
+export const ORDER_STATUSES = ['PENDING', 'READY', 'COMPLETED'];
 
 const orders = new Map();
 
@@ -12,11 +12,11 @@ export function getOrder(id) {
   return orders.get(id);
 }
 
-export function createOrder({ customerName, items }) {
+export function createOrder({ customerName, tableNumber, items }) {
   const order = {
     id: randomUUID(),
-    number: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
-    customerName: customerName.trim(),
+    customerName: customerName?.trim() || undefined,
+    tableNumber: tableNumber?.trim() || undefined,
     items: items.map((item) => item.trim()).filter(Boolean),
     status: 'PENDING',
     createdAt: new Date().toISOString(),

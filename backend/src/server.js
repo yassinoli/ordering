@@ -3,6 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
+import QRCode from 'qrcode';
 import { ORDER_STATUSES, createOrder, getOrder, listOrders, updateOrderStatus } from './orders.js';
 
 const app = express();
@@ -21,32 +22,40 @@ app.get('/api/orders/:id', (req, res) => {
   res.json(order);
 });
 
-app.post('/api/orders', (req, res) => {
-  const { customerName, items } = req.body ?? {};
-  if (typeof customerName !== 'string' || !customerName.trim() || !Array.isArray(items) || !items.length) {
-    return res.status(400).json({ message: 'customerName and at least one item are required' });
+app.post('/api/orders', async (req, res, next) => {
+  const { customerName, tableNumber, items } = req.body ?? {};
+  if ((!customerName?.trim() && !tableNumber?.trim()) || !Array.isArray(items) || !items.length) {
+    return res.status(400).json({ message: 'A customer name or table number and at least one item are required' });
   }
-  const order = createOrder({ customerName, items });
-  io.emit('order:created', order);
-  res.status(201).json(order);
+  const order = createOrder({ customerName, tableNumber, items });
+  const frontendUrl = process.env.FRONTEND_URL ?? clientUrl;
+  try {
+    const trackingUrl = `${frontendUrl.replace(/\/$/, '')}/order/${order.id}`;
+    const qrCodeDataUrl = await QRCode.toDataURL(trackingUrl, { width: 320, margin: 2 });
+    io.emit('order-created', order);
+    return res.status(201).json({ orderId: order.id, qrCodeDataUrl, trackingUrl, order });
+  } catch (error) { return next(error); }
 });
 
-app.patch('/api/orders/:id/status', (req, res) => {
-  const { status } = req.body ?? {};
-  if (!ORDER_STATUSES.includes(status)) return res.status(400).json({ message: 'Invalid status' });
-  const order = updateOrderStatus(req.params.id, status);
+app.patch('/api/orders/:orderId/ready', (req, res) => {
+  const order = updateOrderStatus(req.params.orderId, 'READY');
   if (!order) return res.status(404).json({ message: 'Order not found' });
 
-  io.emit('order:updated', order);
-  if (status === 'READY') io.to(`order:${order.id}`).emit('order:ready', order);
+  io.emit('order-updated', order);
+  io.to(order.id).emit('order-ready', order);
   res.json(order);
 });
 
 io.on('connection', (socket) => {
-  socket.on('order:subscribe', (orderId) => {
-    if (typeof orderId === 'string') socket.join(`order:${orderId}`);
+  socket.on('join-order', (orderId) => {
+    if (typeof orderId === 'string') socket.join(orderId);
   });
-  socket.on('order:unsubscribe', (orderId) => socket.leave(`order:${orderId}`));
+  socket.on('leave-order', (orderId) => socket.leave(orderId));
+});
+
+app.use((error, _req, res, _next) => {
+  console.error(error);
+  res.status(500).json({ message: 'Could not create QR code' });
 });
 
 const port = Number(process.env.PORT ?? 3000);
