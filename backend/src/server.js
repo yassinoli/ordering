@@ -2,6 +2,9 @@ import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
 import { createServer } from 'node:http';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 import { Server } from 'socket.io';
 import QRCode from 'qrcode';
 import bcrypt from 'bcryptjs';
@@ -10,6 +13,8 @@ import { createOrder, createRestaurant, getOrder, getRestaurant, getRestaurantBy
 
 const app = express();
 const httpServer = createServer(app);
+const backendDirectory = dirname(fileURLToPath(import.meta.url));
+const clientBuildDirectory = resolve(backendDirectory, '../../frontend/dist/restaurant-orders-web/browser');
 const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:4200';
 const jwtSecret = process.env.JWT_SECRET ?? 'change-this-secret-before-deploying';
 const io = new Server(httpServer, { cors: { origin: clientUrl, methods: ['GET', 'POST', 'PATCH'] } });
@@ -80,6 +85,13 @@ io.on('connection', (socket) => {
   });
   socket.on('leave-order', (orderId) => socket.leave(orderId));
 });
+
+// Render runs this service as both the API and the Angular host. This is only
+// available after `npm run build` has produced the frontend bundle.
+if (existsSync(clientBuildDirectory)) {
+  app.use(express.static(clientBuildDirectory));
+  app.get('{*path}', (_req, res) => res.sendFile(resolve(clientBuildDirectory, 'index.html')));
+}
 
 app.use((error, _req, res, _next) => {
   console.error(error);

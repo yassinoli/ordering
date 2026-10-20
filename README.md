@@ -20,21 +20,16 @@ npm start
 
 Create a restaurant account at `http://localhost:4200/register`, then sign in at `/login`. Each restaurant only sees and manages its own orders. Customer tracking URLs (`/order/:orderId`) remain public for QR-code recipients.
 
-## Hosting configuration
+## Deploy on Render
 
-The API persists restaurant accounts and orders in SQLite at `backend/data/orders.db` by default. This database is ignored by Git, so place it on a persistent volume when hosting.
+This repository includes a `render.yaml` Blueprint that deploys the Angular app and Express/Socket.io API together as one web service. The app uses same-origin API and socket connections, so no public API URL or CORS configuration is needed.
 
-Set these backend environment variables:
+1. Push this repository to GitHub.
+2. In Render, select **New > Blueprint**, connect the repository, and create the Blueprint.
+3. Choose a paid web-service plan: the included persistent disk is required to keep the SQLite database across redeploys and restarts.
+4. After the deploy is live, open the `onrender.com` URL and register the first restaurant account.
 
-```text
-DATABASE_PATH=/persistent-volume/orders.db
-JWT_SECRET=use-a-long-random-secret-here
-CLIENT_URL=https://your-frontend-domain.example
-FRONTEND_URL=https://your-frontend-domain.example
-PORT=3000
-```
-
-Build the frontend with `npm run build` inside `frontend`, deploy the generated `dist` directory as a static site, and change `frontend/src/app/core/api.config.ts` to your public HTTPS API URL before building. Deploy the backend as a persistent Node service; SQLite will not survive on ephemeral serverless storage.
+The Blueprint builds the frontend, starts the backend, creates a Render-managed `JWT_SECRET`, and stores SQLite data at `/var/data/orders.db`. Do not remove the disk unless you migrate the database to an external service.
 
 ## API
 
