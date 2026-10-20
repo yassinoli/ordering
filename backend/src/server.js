@@ -14,12 +14,13 @@ import { createOrder, createRestaurant, getOrder, getRestaurant, getRestaurantBy
 const app = express();
 const httpServer = createServer(app);
 const backendDirectory = dirname(fileURLToPath(import.meta.url));
-const clientBuildDirectory = resolve(backendDirectory, '../../frontend/dist/restaurant-orders-web/browser');
+const clientBuildDirectory = resolve(backendDirectory, '../../frontend');
 const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:4200';
 const jwtSecret = process.env.JWT_SECRET ?? 'change-this-secret-before-deploying';
-const io = new Server(httpServer, { cors: { origin: clientUrl, methods: ['GET', 'POST', 'PATCH'] } });
+const corsOptions = process.env.CLIENT_URL ? { origin: clientUrl, methods: ['GET', 'POST', 'PATCH'] } : undefined;
+const io = new Server(httpServer, corsOptions ? { cors: corsOptions } : {});
 
-app.use(cors({ origin: clientUrl }));
+if (corsOptions) app.use(cors(corsOptions));
 app.use(express.json());
 
 const tokenFor = (restaurant) => jwt.sign({ restaurantId: restaurant.id }, jwtSecret, { expiresIn: '7d' });
@@ -54,7 +55,7 @@ app.post('/api/orders', requireAuth, async (req, res, next) => {
     return res.status(400).json({ message: 'A customer name or table number and at least one item are required' });
   }
   const order = createOrder({ restaurantId: req.restaurant.restaurantId, customerName, tableNumber, items });
-  const frontendUrl = process.env.FRONTEND_URL ?? clientUrl;
+  const frontendUrl = process.env.FRONTEND_URL ?? `${req.protocol}://${req.get('host')}`;
   try {
     const trackingUrl = `${frontendUrl.replace(/\/$/, '')}/order/${order.id}`;
     const qrCodeDataUrl = await QRCode.toDataURL(trackingUrl, { width: 320, margin: 2 });
@@ -86,8 +87,8 @@ io.on('connection', (socket) => {
   socket.on('leave-order', (orderId) => socket.leave(orderId));
 });
 
-// Render runs this service as both the API and the Angular host. This is only
-// available after `npm run build` has produced the frontend bundle.
+// The backend also hosts the dependency-free frontend, allowing same-origin
+// API and Socket.io connections in production.
 if (existsSync(clientBuildDirectory)) {
   app.use(express.static(clientBuildDirectory));
   app.get('{*path}', (_req, res) => res.sendFile(resolve(clientBuildDirectory, 'index.html')));

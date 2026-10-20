@@ -1,6 +1,6 @@
 # OrderFlow
 
-OrderFlow is a real-time restaurant collection-alert app with an Express/Socket.io API and Angular client.
+OrderFlow is a real-time restaurant collection-alert app with an Express/Socket.io API and a dependency-free vanilla JavaScript client.
 
 ## Run locally
 
@@ -10,26 +10,18 @@ npm install
 npm run dev
 ```
 
-In another terminal:
-
-```powershell
-cd frontend
-npm install
-npm start
-```
-
-Create a restaurant account at `http://localhost:4200/register`, then sign in at `/login`. Each restaurant only sees and manages its own orders. Customer tracking URLs (`/order/:orderId`) remain public for QR-code recipients.
+Open `http://localhost:3000/register`, then sign in at `/login`. Express serves the vanilla frontend and API from the same origin. Each restaurant only sees and manages its own orders. Customer tracking URLs (`/order/:orderId`) remain public for QR-code recipients.
 
 ## Deploy on Render
 
-This repository includes a `render.yaml` Blueprint that deploys the Angular app and Express/Socket.io API together as one web service. The app uses same-origin API and socket connections, so no public API URL or CORS configuration is needed.
+This repository includes a `render.yaml` Blueprint that deploys the vanilla frontend and Express/Socket.io API together as one web service. The app uses same-origin API and socket connections, so no public API URL or CORS configuration is needed.
 
 1. Push this repository to GitHub.
 2. In Render, select **New > Blueprint**, connect the repository, and create the Blueprint.
 3. Choose a paid web-service plan: the included persistent disk is required to keep the SQLite database across redeploys and restarts.
 4. After the deploy is live, open the `onrender.com` URL and register the first restaurant account.
 
-The Blueprint builds the frontend, starts the backend, creates a Render-managed `JWT_SECRET`, and stores SQLite data at `/var/data/orders.db`. Do not remove the disk unless you migrate the database to an external service.
+The Blueprint installs only backend dependencies, starts the backend, creates a Render-managed `JWT_SECRET`, and stores SQLite data at `/var/data/orders.db`. Do not remove the disk unless you migrate the database to an external service.
 
 ## API
 
