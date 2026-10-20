@@ -6,7 +6,7 @@ import { Order } from './order.model';
 
 @Injectable({ providedIn: 'root' })
 export class SocketService {
-  private readonly socket: Socket = io(API_URL, { transports: ['websocket'] });
+  private readonly socket: Socket = io(API_URL, { transports: ['websocket'], auth: { token: localStorage.getItem('orderflow_token') } });
 
   onOrderCreated(): Observable<Order> { return this.event<Order>('order-created'); }
   onOrderUpdated(): Observable<Order> { return this.event<Order>('order-updated'); }
