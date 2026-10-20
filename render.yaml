@@ -13,6 +13,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_PATH
-        value: /var/data/orders.db
+        value: /tmp/orders.db
       - key: JWT_SECRET
         generateValue: true
